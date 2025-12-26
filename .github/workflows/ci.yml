@@ -1,52 +1,53 @@
-﻿name: VeeamPhaser CI
+﻿name: CI Test
 
 on:
   push:
     branches:
-      - main
+      - ci-test
   pull_request:
     branches:
-      - main
+      - ci-test
 
 jobs:
   build-linux:
-    name: Linux (native)
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Setup dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config
+          sudo apt-get install -y cmake g++ git make
 
-      - name: Configure
-        run: cmake -S . -B build-linux -DCMAKE_BUILD_TYPE=Release
+      - name: Create build directory
+        run: mkdir -p build/build-linux
 
-      - name: Build
-        run: cmake --build build-linux -- -j$(nproc)
+      - name: Configure CMake
+        run: cmake -S . -B build/build-linux -DCMAKE_BUILD_TYPE=Release
 
-      - name: Run tests (Linux)
+      - name: Build project
+        run: cmake --build build/build-linux -- -j$(nproc)
+
+      - name: Run tests
         run: |
-          cd build-linux
-          ctest --output-on-failure
+          cd build/build-linux
+          ctest --output-on-failure | tee test_results.log
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-results
+          path: build/build-linux/test_results.log
 
       - name: Upload Linux binaries
         uses: actions/upload-artifact@v4
         with:
           name: linux-binaries
-          path: build-linux
+          path: build/build-linux/
 
-      - name: Upload Linux test logs
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-test-logs
-          path: build-linux/Testing
-          
   build-windows:
-    name: Windows (via Docker, Linux runner)
+    name: Windows (via Docker)
     runs-on: ubuntu-latest
 
     steps:
@@ -57,11 +58,11 @@ jobs:
         run: chmod +x build/docker-build.sh
 
       - name: Build Windows via Docker
-        run: |
-          ./build/docker-build.sh windows
+        run: ./build/docker-build.sh windows
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-dist
           path: build/build-windows
+
