@@ -15,15 +15,12 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Setup CMake
-        uses: lukka/get-cmake@latest
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential git pkg-config
+          sudo apt-get install -y build-essential cmake pkg-config
 
       - name: Configure
         run: cmake -S . -B build-linux -DCMAKE_BUILD_TYPE=Release
@@ -31,12 +28,22 @@ jobs:
       - name: Build
         run: cmake --build build-linux -- -j$(nproc)
 
+      - name: Run tests (Linux)
+        run: |
+          cd build-linux
+          ctest --output-on-failure
 
-      - name: Upload Linux artifacts
+      - name: Upload Linux binaries
         uses: actions/upload-artifact@v4
         with:
-          name: linux-dist
+          name: linux-binaries
           path: build-linux
+
+      - name: Upload Linux test logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-logs
+          path: build-linux/Testing
           
   build-windows:
     name: Windows (via Docker, Linux runner)
