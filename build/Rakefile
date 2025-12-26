@@ -1,0 +1,39 @@
+task :default do
+  sh "cmake --build build -j4 --target all test"
+end
+
+task :build do
+  sh "cmake --build build -j4 --target all"
+end
+
+namespace :data do
+  desc "simulate disk fragmentation"
+  task :fragment, [:fname, :ratio, :block_size] do |t, args| # ratio is in percent (float), i.e. 100 => 100%
+    fname = args.fname || abort("no file name provided")
+    block_size = args.block_size ? args.block_size.to_i : 64*1024
+    ratio = args.ratio ? args.ratio.to_f : 10.0
+
+    ofname = fname + ".frag"
+    FileUtils.cp(fname, ofname)
+
+    fsize = File.size(ofname)
+    fsize_blk = fsize / block_size
+    nblk = (fsize_blk * ratio / 100.0).ceil.to_i/2 # div by 2 because each block swap is incrementing ratio by 2*block_size
+    printf "[*] Creating '%s': block_size=%d, ratio=%f%%, nblk=%d\n", ofname, block_size, ratio, nblk
+
+    File.open(ofname, "r+") do |f|
+      nblk.times do |i|
+        pos1 = pos2 = rand(fsize_blk) * block_size
+        pos2 = rand(fsize_blk) * block_size while pos1 == pos2
+        f.seek(pos1)
+        data1 = f.read(block_size)
+        f.seek(pos2)
+        data2 = f.read(block_size)
+        f.seek(pos1)
+        f.write(data2)
+        f.seek(pos2)
+        f.write(data1)
+      end
+    end
+  end
+end

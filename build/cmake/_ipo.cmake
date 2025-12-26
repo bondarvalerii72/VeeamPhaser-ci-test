@@ -1,0 +1,26 @@
+# reduce statically-built binaries size / also also windows static binaries start failing to link without IPO at some point
+# disabled for non-windows bc it slows builds a lot
+if(WIN32)
+    include(CheckIPOSupported)
+    if(NOT DEFINED IPO_SUPPORTED)
+        check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
+        set(IPO_SUPPORTED ${ipo_supported} CACHE BOOL "IPO support available")
+    endif()
+    if(IPO_SUPPORTED)
+        cmake_policy(SET CMP0069 NEW) # add IPO flags to all targets
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+        add_compile_options(-flto -ffunction-sections -fdata-sections)
+        add_link_options(-flto)
+    else()
+        message(WARNING "IPO not supported: ${ipo_output}")
+    endif()
+endif()
+
+function(add_subdir_ex dir)
+    cmake_policy(PUSH)
+    if(IPO_SUPPORTED)
+        cmake_policy(SET CMP0069 NEW)
+    endif()
+    add_subdirectory(${dir})
+    cmake_policy(POP)
+endfunction()

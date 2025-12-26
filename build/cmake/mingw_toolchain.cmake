@@ -1,0 +1,22 @@
+# building for Windows x64
+set(HOST x86_64-w64-mingw32)
+set(WINDOWS TRUE)
+
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_VERSION 10)
+
+set(CMAKE_C_COMPILER ${HOST}-gcc-posix)
+set(CMAKE_CXX_COMPILER ${HOST}-g++-posix)
+set(CMAKE_RC_COMPILER ${HOST}-windres)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+add_compile_definitions(_FILE_OFFSET_BITS=64 _LARGEFILE64_SOURCE)
+
+list(APPEND COMMON_LIBS winpthread) # for clock_gettime()

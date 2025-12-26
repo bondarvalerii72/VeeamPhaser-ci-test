@@ -1,0 +1,126 @@
+diff --git a/lib/lz4.c b/lib/lz4.c
+index a2f7abe..4b5980f 100644
+--- a/lib/lz4.c
++++ b/lib/lz4.c
+@@ -2030,7 +2030,8 @@ LZ4_decompress_generic(
+                  dict_directive dict,                 /* noDict, withPrefix64k, usingExtDict */
+                  const BYTE* const lowPrefix,  /* always <= dst, == dst when no prefix */
+                  const BYTE* const dictStart,  /* only if dict==usingExtDict */
+-                 const size_t dictSize         /* note : = 0 if noDict */
++                 const size_t dictSize,        /* note : = 0 if noDict */
++                 int *pconsumed
+                  )
+ {
+     if ((src == NULL) || (outputSize < 0)) { return -1; }
+@@ -2434,6 +2435,9 @@ LZ4_decompress_generic(
+             op = cpy;   /* wildcopy correction */
+         }
+ 
++        if (pconsumed)
++            *pconsumed = (((const char*)ip)-src);
++
+         /* end of decoding */
+         DEBUGLOG(5, "decoded %i bytes", (int) (((char*)op)-dst));
+         return (int) (((char*)op)-dst);     /* Nb of output bytes decoded */
+@@ -2452,7 +2456,7 @@ int LZ4_decompress_safe(const char* source, char* dest, int compressedSize, int
+ {
+     return LZ4_decompress_generic(source, dest, compressedSize, maxDecompressedSize,
+                                   decode_full_block, noDict,
+-                                  (BYTE*)dest, NULL, 0);
++                                  (BYTE*)dest, NULL, 0, NULL);
+ }
+ 
+ LZ4_FORCE_O2
+@@ -2461,7 +2465,16 @@ int LZ4_decompress_safe_partial(const char* src, char* dst, int compressedSize,
+     dstCapacity = MIN(targetOutputSize, dstCapacity);
+     return LZ4_decompress_generic(src, dst, compressedSize, dstCapacity,
+                                   partial_decode,
+-                                  noDict, (BYTE*)dst, NULL, 0);
++                                  noDict, (BYTE*)dst, NULL, 0, NULL);
++}
++
++LZ4_FORCE_O2
++int LZ4_decompress_safe_partial_ex(const char* src, char* dst, int compressedSize, int targetOutputSize, int dstCapacity, int* pconsumed)
++{
++    dstCapacity = MIN(targetOutputSize, dstCapacity);
++    return LZ4_decompress_generic(src, dst, compressedSize, dstCapacity,
++                                  partial_decode,
++                                  noDict, (BYTE*)dst, NULL, 0, pconsumed);
+ }
+ 
+ LZ4_FORCE_O2
+@@ -2480,7 +2493,7 @@ int LZ4_decompress_safe_withPrefix64k(const char* source, char* dest, int compre
+ {
+     return LZ4_decompress_generic(source, dest, compressedSize, maxOutputSize,
+                                   decode_full_block, withPrefix64k,
+-                                  (BYTE*)dest - 64 KB, NULL, 0);
++                                  (BYTE*)dest - 64 KB, NULL, 0, NULL);
+ }
+ 
+ LZ4_FORCE_O2
+@@ -2489,7 +2502,7 @@ static int LZ4_decompress_safe_partial_withPrefix64k(const char* source, char* d
+     dstCapacity = MIN(targetOutputSize, dstCapacity);
+     return LZ4_decompress_generic(source, dest, compressedSize, dstCapacity,
+                                   partial_decode, withPrefix64k,
+-                                  (BYTE*)dest - 64 KB, NULL, 0);
++                                  (BYTE*)dest - 64 KB, NULL, 0, NULL);
+ }
+ 
+ /* Another obsolete API function, paired with the previous one. */
+@@ -2506,7 +2519,7 @@ static int LZ4_decompress_safe_withSmallPrefix(const char* source, char* dest, i
+ {
+     return LZ4_decompress_generic(source, dest, compressedSize, maxOutputSize,
+                                   decode_full_block, noDict,
+-                                  (BYTE*)dest-prefixSize, NULL, 0);
++                                  (BYTE*)dest-prefixSize, NULL, 0, NULL);
+ }
+ 
+ LZ4_FORCE_O2
+@@ -2516,7 +2529,7 @@ static int LZ4_decompress_safe_partial_withSmallPrefix(const char* source, char*
+     dstCapacity = MIN(targetOutputSize, dstCapacity);
+     return LZ4_decompress_generic(source, dest, compressedSize, dstCapacity,
+                                   partial_decode, noDict,
+-                                  (BYTE*)dest-prefixSize, NULL, 0);
++                                  (BYTE*)dest-prefixSize, NULL, 0, NULL);
+ }
+ 
+ LZ4_FORCE_O2
+@@ -2527,7 +2540,7 @@ int LZ4_decompress_safe_forceExtDict(const char* source, char* dest,
+     DEBUGLOG(5, "LZ4_decompress_safe_forceExtDict");
+     return LZ4_decompress_generic(source, dest, compressedSize, maxOutputSize,
+                                   decode_full_block, usingExtDict,
+-                                  (BYTE*)dest, (const BYTE*)dictStart, dictSize);
++                                  (BYTE*)dest, (const BYTE*)dictStart, dictSize, NULL);
+ }
+ 
+ LZ4_FORCE_O2
+@@ -2538,7 +2551,7 @@ int LZ4_decompress_safe_partial_forceExtDict(const char* source, char* dest,
+     dstCapacity = MIN(targetOutputSize, dstCapacity);
+     return LZ4_decompress_generic(source, dest, compressedSize, dstCapacity,
+                                   partial_decode, usingExtDict,
+-                                  (BYTE*)dest, (const BYTE*)dictStart, dictSize);
++                                  (BYTE*)dest, (const BYTE*)dictStart, dictSize, NULL);
+ }
+ 
+ LZ4_FORCE_O2
+@@ -2560,7 +2573,7 @@ int LZ4_decompress_safe_doubleDict(const char* source, char* dest, int compresse
+ {
+     return LZ4_decompress_generic(source, dest, compressedSize, maxOutputSize,
+                                   decode_full_block, usingExtDict,
+-                                  (BYTE*)dest-prefixSize, (const BYTE*)dictStart, dictSize);
++                                  (BYTE*)dest-prefixSize, (const BYTE*)dictStart, dictSize, NULL);
+ }
+ 
+ /*===== streaming decompression functions =====*/
+diff --git a/lib/lz4.h b/lib/lz4.h
+index 80e3e5c..137b911 100644
+--- a/lib/lz4.h
++++ b/lib/lz4.h
+@@ -306,6 +306,7 @@ LZ4LIB_API int LZ4_compress_destSize(const char* src, char* dst, int* srcSizePtr
+  *           Otherwise, *silent corruption will occur*.
+  */
+ LZ4LIB_API int LZ4_decompress_safe_partial (const char* src, char* dst, int srcSize, int targetOutputSize, int dstCapacity);
++LZ4LIB_API int LZ4_decompress_safe_partial_ex (const char* src, char* dst, int srcSize, int targetOutputSize, int dstCapacity, int* pconsumed);
+ 
+ 
+ /*-*********************************************

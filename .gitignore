@@ -1,0 +1,22 @@
+*.bin
+*.log
+*.o
+*.out
+*.swp
+
+/build-*/
+/out/
+/dist/*
+!dist/.gitkeep
+!docs/.gitkeep
+version.h
+VeeamPhaser
+.vscode*/
+
+# Build directory - generated files only
+/build/_deps/
+/build/CMakeCache.txt
+/build/CMakeFiles/
+/build/command_link_anchor.cpp
+/build/CPackConfig.cmake
+/build/CPackSourceConfig.cmake
