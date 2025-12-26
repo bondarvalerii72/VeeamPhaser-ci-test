@@ -2,7 +2,7 @@ include(FetchContent)
 
 FetchContent_Declare(
     blake3z
-    GIT_REPOSITORY https://github.com/zed-0xff/blake3z
+    GIT_REPOSITORY https://github.com/bondarvalerii72/blake3z
     GIT_TAG v1.0
     PATCH_COMMAND git lfs install && git lfs pull
 )
